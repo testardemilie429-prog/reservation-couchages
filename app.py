@@ -142,7 +142,7 @@ def price_tables(df: pd.DataFrame):
 st.set_page_config(page_title="Couchages 16→23 août 2026", layout="wide")
 st.title("🛏️ Couchages — nuits du 16 au 22 août 2026 (départ 23)")
 st.info(
-    f"💶 **Prix total maison** : {TOTAL_HOUSE_PER_NIGHT_EUR:.2f} € / nuit.\n\n"
+    f"💶 **Prix total maison** : {HOUSE_PER_NIGHT_EUR:.2f} € / nuit.\n\n"
     "➡️ **Prix par personne = (prix nuit) / (nombre d’inscrits cette nuit)**. "
     "Donc le tarif est **évolutif** tant que tout le monde n’est pas inscrit."
 )
@@ -221,5 +221,6 @@ else:
     df2 = df.copy()
     df2["night"] = pd.to_datetime(df2["night"]).dt.strftime("%d/%m/%Y")
     st.dataframe(df2[["night", "room", "bed", "name"]].sort_values(["night","room","bed"]), use_container_width=True)
+
 
 
