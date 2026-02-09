@@ -5,8 +5,11 @@ import streamlit as st
 
 DB_PATH = "reservations.db"
 
-# ✅ PRIX TOTAL DE LA MAISON PAR NUIT (à diviser entre les présents)
-TOTAL_HOUSE_PER_NIGHT_EUR = 31.0
+TOTAL_WEEK = 2154.0
+NIGHTS_COUNT = 7
+HOUSE_PER_NIGHT = TOTAL_WEEK / NIGHTS_COUNT  # 307.71
+MIN_PER_PERSON = 31.0
+
 
 # Nuits affichées : 16 -> 22 août 2026 (départ le 23)
 START_NIGHT = date(2026, 8, 16)
@@ -218,4 +221,5 @@ else:
     df2 = df.copy()
     df2["night"] = pd.to_datetime(df2["night"]).dt.strftime("%d/%m/%Y")
     st.dataframe(df2[["night", "room", "bed", "name"]].sort_values(["night","room","bed"]), use_container_width=True)
+
 
