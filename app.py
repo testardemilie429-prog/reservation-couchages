@@ -82,48 +82,49 @@ def get_booking(df, night: date, room: str, bed: str):
 
 # ---------- PRIX ----------
 def price_tables(df: pd.DataFrame):
-    """Retourne: table_nuits, table_totaux"""
     ns = nights()
+
+    # On prépare un df avec date propre
     if df.empty:
-        # tables vides mais propres
-        t1 = pd.DataFrame([{
+        table_nuits = pd.DataFrame([{
             "Nuit": n.strftime("%a %d/%m"),
             "Inscrits": 0,
-            "Prix / personne (si inscrits)": ""
+            "Prix / personne": "",
         } for n in ns])
-        t2 = pd.DataFrame(columns=["Nom", "Nuits", "Total (€)"])
-        return t1, t2
+        table_totaux = pd.DataFrame(columns=["Nom", "Nuits", "Total (€)"])
+        return table_nuits, table_totaux
 
-    # Inscrits par nuit
     df_n = df.copy()
     df_n["night_date"] = pd.to_datetime(df_n["night"]).dt.date
 
+    # Prix par nuit
+    per_night_price = {}
     rows = []
     for n in ns:
         c = int((df_n["night_date"] == n).sum())
         if c > 0:
-            per = TOTAL_HOUSE_PER_NIGHT_EUR / c
-            per_str = f"{per:.2f} €"
+            price = max(MIN_PER_PERSON, HOUSE_PER_NIGHT / c)
+            per_night_price[n] = price
+            price_str = f"{price:.2f} €"
         else:
-            per_str = ""
+            price_str = ""
         rows.append({
             "Nuit": n.strftime("%a %d/%m"),
             "Inscrits": c,
-            "Prix / personne (si inscrits)": per_str
+            "Prix / personne": price_str
         })
     table_nuits = pd.DataFrame(rows)
 
-    # Total par personne
+    # Total par personne = somme des prix des nuits où la personne est présente
     totals = {}
     nights_count = {}
     for n in ns:
         people = df_n[df_n["night_date"] == n]["name"].tolist()
-        c = len(people)
-        if c == 0:
+        if not people:
             continue
-        share = TOTAL_HOUSE_PER_NIGHT_EUR / c
+        price = per_night_price[n]
         for p in people:
-            totals[p] = totals.get(p, 0.0) + share
+            totals[p] = totals.get(p, 0.0) + price
             nights_count[p] = nights_count.get(p, 0) + 1
 
     table_totaux = pd.DataFrame([{
@@ -217,3 +218,4 @@ else:
     df2 = df.copy()
     df2["night"] = pd.to_datetime(df2["night"]).dt.strftime("%d/%m/%Y")
     st.dataframe(df2[["night", "room", "bed", "name"]].sort_values(["night","room","bed"]), use_container_width=True)
+
