@@ -3,16 +3,15 @@ import pandas as pd
 import streamlit as st
 import requests
 
-# 🔁 Mets ici TON lien /exec
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr8YlwW-BZ0NXdrmkew-0IwZyD5R2BNvGDo4jE-rR6WH-pSgGaIzRrbHCaLhniAHd_/exec"
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuw5ITaFH1AGnqDutYS15MwYMQXlmudL5d3ujf_PKLL1a_KjJNYgYiZ0yDy5229Mbq/exec"
 
 TOTAL_WEEK = 2154.0
 NIGHTS_COUNT = 7
-HOUSE_PER_NIGHT = TOTAL_WEEK / NIGHTS_COUNT
+HOUSE_PER_NIGHT = TOTAL_WEEK / NIGHTS_COUNT  # 307.71
 MIN_PER_PERSON = 31.0
 
 START_NIGHT = date(2026, 8, 16)
-END_NIGHT_EXCL = date(2026, 8, 23)  # exclu => dernière nuit affichée = 22
+END_NIGHT_EXCL = date(2026, 8, 23)  # exclu => dernière nuit = 22
 
 BLOCKS = {
     "Chambre 1 (lit double)": ["Couchage 1", "Couchage 2"],
@@ -20,6 +19,7 @@ BLOCKS = {
     "Chambre 3 (lit double)": ["Couchage 1", "Couchage 2"],
     "Dortoir (4 lits simples)": ["Couchage 1", "Couchage 2", "Couchage 3", "Couchage 4"],
 }
+
 
 def nights():
     d = START_NIGHT
@@ -29,18 +29,30 @@ def nights():
         d += timedelta(days=1)
     return out
 
+
 def load_bookings() -> pd.DataFrame:
     r = requests.get(SCRIPT_URL, timeout=20)
     r.raise_for_status()
+
     txt = r.text.strip()
     if not txt.startswith("["):
-        raise Exception("Le script ne renvoie pas du JSON (déploiement pas public ?).")
+        raise Exception("Le script ne renvoie pas du JSON (déploiement Apps Script pas public ?).")
+
     data = r.json()
     df = pd.DataFrame(data)
+
     for col in ["night", "room", "bed", "name"]:
         if col not in df.columns:
             df[col] = []
+
+    # Normalise night côté Python aussi (au cas où)
+    df["night"] = df["night"].astype(str).str.slice(0, 10).str.strip()
+    df["room"] = df["room"].astype(str).str.strip()
+    df["bed"] = df["bed"].astype(str).str.strip()
+    df["name"] = df["name"].astype(str).str.strip()
+
     return df
+
 
 def save_booking(night: date, room: str, bed: str, name: str):
     r = requests.post(
@@ -55,20 +67,19 @@ def save_booking(night: date, room: str, bed: str, name: str):
     )
     r.raise_for_status()
     if r.text.strip() not in ("OK", ""):
-        # Si Apps Script répond un message d'erreur
         raise Exception(f"Réponse script: {r.text.strip()}")
+
 
 def is_taken(df: pd.DataFrame, night: date, room: str, bed: str):
     if df.empty:
         return None
-    x = df[
-        (df["night"] == night.isoformat()) &
-        (df["room"] == room) &
-        (df["bed"] == bed)
-    ]
+
+    n = night.isoformat()
+    x = df[(df["night"] == n) & (df["room"] == room) & (df["bed"] == bed)]
     if x.empty:
         return None
     return str(x.iloc[0]["name"])
+
 
 def price_tables(df: pd.DataFrame):
     ns = nights()
@@ -79,7 +90,7 @@ def price_tables(df: pd.DataFrame):
         )
 
     df2 = df.copy()
-    df2["night_date"] = pd.to_datetime(df2["night"]).dt.date
+    df2["night_date"] = pd.to_datetime(df2["night"], errors="coerce").dt.date
 
     per_night_price = {}
     rows = []
@@ -180,9 +191,12 @@ if df.empty:
     st.write("Aucune inscription pour l’instant.")
 else:
     df_show = df.copy()
-    df_show["night"] = pd.to_datetime(df_show["night"]).dt.strftime("%d/%m/%Y")
-    st.dataframe(df_show[["night", "room", "bed", "name"]].sort_values(["night", "room", "bed"]),
-                 use_container_width=True)
+    df_show["night"] = pd.to_datetime(df_show["night"], errors="coerce").dt.strftime("%d/%m/%Y")
+    st.dataframe(
+        df_show[["night", "room", "bed", "name"]].sort_values(["night", "room", "bed"]),
+        use_container_width=True
+    )
+
 
 
 
