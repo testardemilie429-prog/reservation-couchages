@@ -3,7 +3,7 @@ import streamlit as st
 import requests
 import pandas as pd
 
-SCRIPT_URL = "COLLE ICI TON LIEN /exec"
+SCRIPT_URL ="https://script.google.com/macros/s/AKfycbyjVxUS6XjpXuFyMNGFIqaltTY3w-rXLDwKlTSsqGxV5luIHkDQnj6aydVjjxDFwRdp/exec"
 
 st.title("Réservation couchages")
 
@@ -34,4 +34,5 @@ name = st.text_input("Nom")
 if st.button("Réserver"):
     save(night, room, bed, name)
     st.rerun()
+
 
