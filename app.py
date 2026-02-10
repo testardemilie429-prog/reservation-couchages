@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 import requests
 
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuw5ITaFH1AGnqDutYS15MwYMQXlmudL5d3ujf_PKLL1a_KjJNYgYiZ0yDy5229Mbq/exec"
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybz1YuOga9MMU6W2xETyMf9TdalhRDEgHB3kMs0_iiWmlCfULY5zyH4rohqLMUr51-/exec"
 
 TOTAL_WEEK = 2154.0
 NIGHTS_COUNT = 7
@@ -13,13 +13,20 @@ MIN_PER_PERSON = 31.0
 START_NIGHT = date(2026, 8, 16)
 END_NIGHT_EXCL = date(2026, 8, 23)  # exclu => dernière nuit = 22
 
-BLOCKS = {
-    "Chambre 1 (lit double)": ["Couchage 1", "Couchage 2"],
-    "Chambre 2 (lit double)": ["Couchage 1", "Couchage 2"],
-    "Chambre 3 (lit double)": ["Couchage 1", "Couchage 2"],
-    "Dortoir (4 lits simples)": ["Couchage 1", "Couchage 2", "Couchage 3", "Couchage 4"],
+ROOMS = ["Chambre 1", "Chambre 2", "Chambre 3", "Dortoir"]
+BEDS_BY_ROOM = {
+    "Chambre 1": ["Couchage 1", "Couchage 2"],
+    "Chambre 2": ["Couchage 1", "Couchage 2"],
+    "Chambre 3": ["Couchage 1", "Couchage 2"],
+    "Dortoir":   ["Couchage 1", "Couchage 2", "Couchage 3", "Couchage 4"],
 }
 
+LABELS = {
+    "Chambre 1": "Chambre 1 (lit double)",
+    "Chambre 2": "Chambre 2 (lit double)",
+    "Chambre 3": "Chambre 3 (lit double)",
+    "Dortoir": "Dortoir (4 lits simples)",
+}
 
 def nights():
     d = START_NIGHT
@@ -29,15 +36,12 @@ def nights():
         d += timedelta(days=1)
     return out
 
-
 def load_bookings() -> pd.DataFrame:
     r = requests.get(SCRIPT_URL, timeout=20)
     r.raise_for_status()
-
     txt = r.text.strip()
     if not txt.startswith("["):
         raise Exception("Le script ne renvoie pas du JSON (déploiement Apps Script pas public ?).")
-
     data = r.json()
     df = pd.DataFrame(data)
 
@@ -45,41 +49,43 @@ def load_bookings() -> pd.DataFrame:
         if col not in df.columns:
             df[col] = []
 
-    # Normalise night côté Python aussi (au cas où)
     df["night"] = df["night"].astype(str).str.slice(0, 10).str.strip()
     df["room"] = df["room"].astype(str).str.strip()
     df["bed"] = df["bed"].astype(str).str.strip()
     df["name"] = df["name"].astype(str).str.strip()
-
     return df
-
 
 def save_booking(night: date, room: str, bed: str, name: str):
     r = requests.post(
         SCRIPT_URL,
-        json={
-            "night": night.isoformat(),
-            "room": room,
-            "bed": bed,
-            "name": name.strip()
-        },
+        json={"night": night.isoformat(), "room": room, "bed": bed, "name": name.strip()},
         timeout=20
     )
     r.raise_for_status()
     if r.text.strip() not in ("OK", ""):
         raise Exception(f"Réponse script: {r.text.strip()}")
 
+def norm(s: str) -> str:
+    if s is None:
+        return ""
+    s = str(s).strip().lower()
+    if " (" in s:
+        s = s.split(" (")[0].strip()  # enlève "(lit double)" etc
+    return s
 
-def is_taken(df: pd.DataFrame, night: date, room: str, bed: str):
+def is_taken(df: pd.DataFrame, night: date, room_key: str, bed: str):
     if df.empty:
         return None
-
     n = night.isoformat()
-    x = df[(df["night"] == n) & (df["room"] == room) & (df["bed"] == bed)]
+
+    x = df[
+        (df["night"] == n) &
+        (df["room"].apply(norm) == norm(room_key)) &
+        (df["bed"].apply(norm) == norm(bed))
+    ]
     if x.empty:
         return None
     return str(x.iloc[0]["name"])
-
 
 def price_tables(df: pd.DataFrame):
     ns = nights()
@@ -122,7 +128,6 @@ def price_tables(df: pd.DataFrame):
 
     return pd.DataFrame(rows), table_totaux
 
-
 # ---- UI ----
 st.set_page_config(page_title="Réservation couchages", layout="wide")
 st.title("🛏️ Réservation couchages — nuits du 16 au 22 août 2026 (départ 23)")
@@ -140,26 +145,33 @@ except Exception as e:
     st.exception(e)
     st.stop()
 
+with st.expander("🔎 Debug (ce que lit l'appli)"):
+    st.write("Nombre de lignes lues :", len(df))
+    st.dataframe(df.tail(30), use_container_width=True)
+    if not df.empty:
+        st.write("Rooms uniques :", sorted(df["room"].unique().tolist()))
+        st.write("Beds uniques :", sorted(df["bed"].unique().tolist()))
+        st.write("Nights uniques :", sorted(df["night"].unique().tolist()))
+
 tabs = st.tabs([d.strftime("%a %d/%m") for d in nights()])
-rooms_order = list(BLOCKS.keys())
 
 for tab, d in zip(tabs, nights()):
     with tab:
         st.markdown(f"### {d.strftime('%A %d %B %Y').capitalize()} (nuit)")
         cols = st.columns(4)
 
-        for i, room in enumerate(rooms_order):
+        for i, room_key in enumerate(ROOMS):
             with cols[i]:
-                st.subheader(room)
-                for bed in BLOCKS[room]:
-                    taken_by = is_taken(df, d, room, bed)
+                st.subheader(LABELS[room_key])
+                for bed in BEDS_BY_ROOM[room_key]:
+                    taken_by = is_taken(df, d, room_key, bed)
                     box = st.container(border=True)
                     with box:
                         st.write(f"**{bed}**")
                         if taken_by:
                             st.success(f"Pris par : {taken_by}")
                         else:
-                            with st.form(key=f"{d}-{room}-{bed}", clear_on_submit=True):
+                            with st.form(key=f"{d}-{room_key}-{bed}", clear_on_submit=True):
                                 n = st.text_input("Ton prénom", label_visibility="collapsed", placeholder="Ex : Emilie")
                                 ok = st.form_submit_button("Réserver")
                                 if ok:
@@ -167,7 +179,7 @@ for tab, d in zip(tabs, nights()):
                                         st.error("Mets ton prénom 🙂")
                                     else:
                                         try:
-                                            save_booking(d, room, bed, n)
+                                            save_booking(d, room_key, bed, n)
                                             st.success("Réservé ✅")
                                             st.rerun()
                                         except Exception as e:
@@ -191,13 +203,5 @@ if df.empty:
     st.write("Aucune inscription pour l’instant.")
 else:
     df_show = df.copy()
-    df_show["night"] = pd.to_datetime(df_show["night"], errors="coerce").dt.strftime("%d/%m/%Y")
-    st.dataframe(
-        df_show[["night", "room", "bed", "name"]].sort_values(["night", "room", "bed"]),
-        use_container_width=True
-    )
-
-
-
-
-
+    st.dataframe(df_show[["night", "room", "bed", "name"]].sort_values(["night", "room", "bed"]),
+                 use_container_width=True)
