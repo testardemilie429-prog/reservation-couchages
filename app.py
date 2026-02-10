@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 import requests
 
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybz1YuOga9MMU6W2xETyMf9TdalhRDEgHB3kMs0_iiWmlCfULY5zyH4rohqLMUr51-/exec"
+https://script.google.com/macros/library/d/18Dey5ij_-cIxTwPW3XygcvPEoqAKLaNpycJ3oJCqKufb4gOrfiX5NOSm/22
 
 TOTAL_WEEK = 2154.0
 NIGHTS_COUNT = 7
@@ -205,3 +205,4 @@ else:
     df_show = df.copy()
     st.dataframe(df_show[["night", "room", "bed", "name"]].sort_values(["night", "room", "bed"]),
                  use_container_width=True)
+
