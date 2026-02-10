@@ -1,5 +1,5 @@
-const SHEET_NAME = "Feuille 1";  // Mets ici EXACTEMENT le nom de ton onglet
-const TOKEN = "CHANGE-MOI-123";  // Même valeur que dans ton app.py
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwE-zsX0D_zE0L3hkmUV9IkWKLVbSS24khntToqKLUuiK0M-RBD1KWbCrxI7aI6peKt/exec"
+TOKEN = "CHANGE-MOI-123"
 
 function doGet(e) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
@@ -33,5 +33,6 @@ function doPost(e) {
   return ContentService.createTextOutput("OK")
     .setMimeType(ContentService.MimeType.TEXT);
 }
+
 
 
