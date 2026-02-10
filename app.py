@@ -25,10 +25,17 @@ def nights():
     return out
 
 def load_bookings():
-    r = requests.get(SCRIPT_URL, timeout=20)
+    r = requests.get(SCRIPT_URL, timeout=20, allow_redirects=True)
     r.raise_for_status()
-    data = r.json()
-    return pd.DataFrame(data)
+
+    # Debug lisible si ce n'est pas du JSON
+    ct = r.headers.get("content-type", "")
+    if "application/json" not in ct:
+        # on affiche les 200 premiers caractères pour comprendre
+        raise Exception(f"Réponse non-JSON (content-type={ct}) : {r.text[:200]}")
+
+    return pd.DataFrame(r.json())
+
 
 def add_booking(night, room, bed, name):
     payload = {
@@ -86,4 +93,5 @@ for tab, d in zip(tabs, nights()):
                                     else:
                                         add_booking(d, room, bed, n)
                                         st.rerun()
+
 
