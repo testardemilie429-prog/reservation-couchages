@@ -3,7 +3,8 @@ import pandas as pd
 import streamlit as st
 import requests
 
-SCRIPT_URL = "SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvzzcDs8OmU9VPnMIKEVbwm1MRvOVWJ3ETakOZUEiUr_w5BvpL_gHQYXM9OcYHVr6Z/exec"
+SSCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvzzcDs80mU9VPnMIKEVbwm1MRvOVWJ3ETakOZUEiUr_w5BvpL_gHQYXM9OcYHVr6Z/exec"
+
 "
 TOKEN = "CHANGE-MOI-123"
 
@@ -94,6 +95,7 @@ for tab, d in zip(tabs, nights()):
                                     else:
                                         add_booking(d, room, bed, n)
                                         st.rerun()
+
 
 
 
